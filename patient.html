@@ -87,7 +87,7 @@
         const numberEl = document.getElementById("number");
         const bodyEl = document.body;
         let isFirstLoad = true;
-
+        const notificationSound = new Audio("https://actions.google.com/sounds/v1/alarms/medium_bell_ringing_near.ogg");
         // Real-time update stream listener
         onValue(queueRef, (snapshot) => {
             const newNumber = snapshot.val() !== null ? snapshot.val() : 0;
@@ -103,6 +103,17 @@
 
         function triggerFlash() {
             bodyEl.classList.add("flash");
+            // Restart sound
+            notificationSound.currentTime = 0;
+
+            // Play sound
+            notificationSound.play();
+
+            // Stop after 5 seconds
+            setTimeout(() => {
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+            }, 5000);
             setTimeout(() => {
                 bodyEl.classList.remove("flash");
             }, 250); // Flash lasts 250ms
