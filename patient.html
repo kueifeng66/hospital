@@ -60,6 +60,7 @@
         <h1>Current Number</h1>
         <div class="live-number" id="number">--</div>
         <div class="status-tag">● Real-time Connection Active</div>
+		<div class="audio-notice" id="audio-status">⚠️ Tap anywhere to enable sound alerts</div>
     </div>
     <audio id="queueSound" src="bell.mp3" loop preload="auto"></audio>
     <!-- Firebase SDK Modules -->
@@ -107,7 +108,9 @@
             sound.currentTime = 0;
 
            // Play sound
-            sound.play();
+            sound.play().catch(err => {
+                console.warn("Audio play blocked because user hasn't clicked the page yet:", err);
+            });
 
            // Stop after 5 seconds
            setTimeout(() => {
