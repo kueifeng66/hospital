@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Queue - Staff Panel</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f3f4f6;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+            width: 320px;
+        }
+        h2 { color: #4b5563; margin-top: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .number-display {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #2563eb;
+            margin: 1.5rem 0;
+            line-height: 1;
+        }
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.1s ease;
+            margin-bottom: 0.75rem;
+        }
+        .btn-next { background-color: #2563eb; color: white; }
+        .btn-next:active { background-color: #1d4ed8; }
+        .secondary-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-sub { background-color: #e5e7eb; color: #4b5563; font-size: 0.9rem; padding: 0.6rem; }
+        .btn-sub:active { background-color: #d1d5db; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Now Calling</h2>
+        <div class="number-display" id="current-num">--</div>
+        
+        <button class="btn btn-next" id="btn-next">Next Patient</button>
+        
+        <div class="secondary-actions">
+            <button class="btn btn-sub" id="btn-prev">Previous</button>
+            <button class="btn btn-sub" id="btn-reset">Reset (0)</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+        // Your Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAir-SJKaxT9ay7ybpe33pQDO9_ddqSvKk",
+            authDomain: "hospital-89fff.firebaseapp.com",
+            databaseURL: "https://hospital-89fff-default-rtdb.firebaseio.com",
+            projectId: "hospital-89fff",
+            storageBucket: "hospital-89fff.firebasestorage.app",
+            messagingSenderId: "566396718607",
+            appId: "1:566396718607:web:42df4eeb5673ea6b549d7a",
+            measurementId: "G-RQ6M1F9GJ9"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const queueRef = ref(db, 'queue/currentNumber');
+
+        let currentLocalNumber = 0;
+
+        // Sync local interface state with DB in real-time
+        onValue(queueRef, (snapshot) => {
+            const data = snapshot.val();
+            currentLocalNumber = data !== null ? data : 0;
+            document.getElementById("current-num").innerText = currentLocalNumber;
+        });
+
+        // Use Transactions to prevent conflicts if multiple staff click simultaneously
+        document.getElementById("btn-next").addEventListener("click", () => {
+            runTransaction(queueRef, (currentValue) => {
+                return (currentValue || 0) + 1;
+            });
+        });
+
+        document.getElementById("btn-prev").addEventListener("click", () => {
+            runTransaction(queueRef, (currentValue) => {
+                if (currentValue && currentValue > 0) {
+                    return currentValue - 1;
+                }
+                return 0;
+            });
+        });
+
+        document.getElementById("btn-reset").addEventListener("click", () => {
+            if(confirm("Are you sure you want to reset the queue to 0?")) {
+                set(queueRef, 0);
+            }
+        });
+    </script>
+</body>
+</html>
