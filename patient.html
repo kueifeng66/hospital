@@ -14,6 +14,8 @@
             background-color: #1e293b;
             margin: 0;
             transition: background-color 0.2s ease;
+            cursor: pointer; /* Makes it obvious the page is clickable */
+            -webkit-tap-highlight-color: transparent; /* Prevents ugly box flash on iPhone tap */
         }
         .display-container {
             text-align: center;
@@ -43,6 +45,17 @@
             font-size: 0.85rem;
             font-weight: 600;
             display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .audio-notice {
+            font-size: 0.9rem;
+            color: #f59e0b;
+            margin-top: 0.5rem;
+            font-weight: 500;
+            padding: 0.5rem;
+        }
+        .audio-notice.enabled {
+            color: #10b981;
         }
         /* Visual flash effect when number shifts */
         body.flash {
@@ -60,9 +73,12 @@
         <h1>現在號碼 (Current Number)</h1>
         <div class="live-number" id="number">--</div>
         <div class="status-tag">● 即時連線中 (Real-time Connection Active)</div>
-		<div class="audio-notice" id="audio-status">⚠️點擊任意位置以啟用聲音警示 (Tap anywhere to enable sound alerts)</div>
+        <div class="audio-notice" id="audio-status">⚠️ 點擊螢幕任意位置啟用聲音 (Tap anywhere to enable sound)</div>
     </div>
-    <audio id="queueSound" src="bell.mp3" loop preload="auto"></audio>
+    
+    <!-- Removed "loop" attribute to comply with iOS audio constraints -->
+    <audio id="queueSound" src="bell.mp3" preload="auto"></audio>
+
     <!-- Firebase SDK Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
@@ -87,8 +103,26 @@
 
         const numberEl = document.getElementById("number");
         const bodyEl = document.body;
-        let isFirstLoad = true;
+							   
         const sound = document.getElementById("queueSound");
+        const audioStatusEl = document.getElementById("audio-status");
+
+        let isFirstLoad = true;
+        let audioTimeoutId = null; 
+
+        // ====== CRITICAL FOR IPHONE: UNLOCK AUDIO CONTEXT ======
+        bodyEl.addEventListener("click", () => {
+            // Silently play and immediately pause the track to register authorization with iOS
+            sound.play().then(() => {
+                sound.pause();
+                sound.currentTime = 0;
+                audioStatusEl.innerText = "🔊 聲音警示已啟用 (Sound alerts enabled)";
+                audioStatusEl.className = "audio-notice enabled";
+            }).catch(err => {
+                console.error("Audio initialization failed:", err);
+            });
+        }, { once: true }); // The unlock only needs to happen exactly once per session
+
         // Real-time update stream listener
         onValue(queueRef, (snapshot) => {
             const newNumber = snapshot.val() !== null ? snapshot.val() : 0;
@@ -104,22 +138,30 @@
 
         function triggerFlash() {
             bodyEl.classList.add("flash");
-            // Restart sound
+            
+            // Clear any active timeouts if numbers are updated rapidly
+            if (audioTimeoutId) {
+                clearTimeout(audioTimeoutId);
+            }
+
+            // Reset track playback position
             sound.currentTime = 0;
 
-           // Play sound
+            // Trigger play state
             sound.play().catch(err => {
-                console.warn("Audio play blocked because user hasn't clicked the page yet:", err);
+                console.warn("Audio play blocked by iOS because user has not interacted with the screen yet.", err);
             });
 
-           // Stop after 5 seconds
-           setTimeout(() => {
-              sound.pause();
-              sound.currentTime = 0;
-           }, 2000);
+            // Stop playback after exactly 3 seconds
+            audioTimeoutId = setTimeout(() => {
+                sound.pause();
+                sound.currentTime = 0;
+            }, 3000);
+
+            // Revert flash design properties after 250ms
             setTimeout(() => {
                 bodyEl.classList.remove("flash");
-            }, 250); // Flash lasts 250ms
+            }, 250); 
         }
     </script>
 </body>
